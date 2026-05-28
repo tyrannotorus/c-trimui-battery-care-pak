@@ -69,9 +69,13 @@ can be set (4.0 / 4.1 / 4.2 V).
 
 1. Download `Battery.Care.pak.zip` from the [latest release](https://github.com/tyrannotorus/c-trimui-battery-care-pak/releases).
 2. Copy it to `/mnt/SDCARD/Tools/tg5040/` (mount the SD card or `adb push`).
-3. Extract it in place — you should end up with `/mnt/SDCARD/Tools/tg5040/Battery Care.pak/` (if your unzip tool renames the folder to `Battery.Care.pak`, rename it back to `Battery Care.pak`). Delete the zip.
+3. Extract it so the `Battery Care.pak` folder lands directly in `/mnt/SDCARD/Tools/tg5040/`, then delete the zip. (If your unzip tool dots the name to `Battery.Care.pak`, rename it back to `Battery Care.pak`.)
 4. On device, open **Tools → Battery Care**.
 5. **Left/Right** on **Charge Limit** to set the ceiling (or **Off**), then exit. Takes effect immediately; re-arms on every boot.
+
+> **Note:** `launch.sh` must sit directly inside `Battery Care.pak/`. Some unzip tools
+> double-wrap the archive — if you see `Battery Care.pak/Battery Care.pak/`, copy the
+> inner folder.
 
 ## Build
 
