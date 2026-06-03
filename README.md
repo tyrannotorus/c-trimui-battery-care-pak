@@ -19,7 +19,7 @@ your own risk. The author accepts no liability for any damage to your device or 
 
 ## Dev Disclaimer
 
-This is human-directed but 100% slop-coded. Thus beware, here be dragons. 
+I am an experienced developer, but note this is a personal-use project that's been human-directed but 100% slop-coded. Thus beware, here be dragons.
 
 ## Supported Platforms
 
