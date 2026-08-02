@@ -13,7 +13,7 @@ PAK_DIR     := build/$(PAK_NAME)
 # uploaded artifact name equals pak.json's release_filename (Pak Store check).
 RELEASE_ZIP := Battery.Care.pak.zip
 
-.PHONY: all ext tg5040 pak pakz clean help
+.PHONY: all ext patch-readonly tg5040 pak pakz clean help
 
 all: pak
 
@@ -27,8 +27,22 @@ ext:
 	@cp -an src/. $(PAK_WS)/src/ 2>/dev/null || true
 	@cp -an res/. $(PAK_WS)/res/ 2>/dev/null || true
 
+# NextUI's CFG layer rewrites minuisettings.txt from CFG_quit and from every
+# CFG_set* (even the ones CFG_init itself triggers while parsing).  This pak
+# only CONSUMES the theme; a pak writing the file back with a vendored vintage
+# that mismatches the installed NextUI corrupts the theme (e.g. the pre-alpha
+# "0x%06X" writer turned black 0x000000FF into blue).  Neuter CFG_sync in the
+# clone; idempotent, and the build fails loudly if the upstream shape drifts.
+patch-readonly: ext
+	@if ! grep -q 'read-only consumer' $(NEXTUI_DIR)/workspace/all/common/config.c; then \
+		sed -i 's|^void CFG_sync(void)|void CFG_sync(void)\n{\n    /* read-only consumer: this pak never rewrites minuisettings.txt */\n}\n\nstatic void CFG_sync_disabled(void) __attribute__((unused));\nstatic void CFG_sync_disabled(void)|' \
+			$(NEXTUI_DIR)/workspace/all/common/config.c; \
+	fi
+	@grep -q 'read-only consumer' $(NEXTUI_DIR)/workspace/all/common/config.c || \
+		{ echo 'ERROR: CFG_sync read-only patch did not apply'; exit 1; }
+
 # Stage our src/ and res/ into the workspace, then build libmsettings + the elf.
-tg5040: ext
+tg5040: ext patch-readonly
 	cp -a src/. $(PAK_WS)/src/
 	cp -a res/. $(PAK_WS)/res/
 	docker run --rm \
