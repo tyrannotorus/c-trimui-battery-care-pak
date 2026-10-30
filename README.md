@@ -83,9 +83,9 @@ Cross-compiled in the NextUI `tg5040` Docker toolchain. Needs `docker` (and `adb
 
 ```sh
 cd pak
-make pak     # clone NextUI (first run), cross-compile, assemble build/Battery Care.pak/
+make pak     # fetch NextUI (first run), cross-compile, assemble build/Battery Care.pak/
 make pakz    # also zip to build/Battery.Care.pak.zip
-make push    # build + adb push to a connected device
+make push    # build + adb push to a connected device (ADB="adb -s SERIAL" to pick one)
 make clean   # remove build artifacts
 ```
 
@@ -137,9 +137,12 @@ make clean   # remove build artifacts
 
 ### Build pipeline
 
-`make pak` shallow-clones NextUI into `pak/ext/NextUI` (gitignored), stages `pak/src/` +
-`pak/res/` into `ext/NextUI/workspace/batterycare/`, then cross-compiles in
-`ghcr.io/loveretro/tg5040-toolchain`, linking NextUI's common sources + `libmsettings`.
+`make pak` shallow-fetches NextUI at `NEXTUI_REF` into `pak/ext/NextUI` (gitignored), stages
+`pak/src/` + `pak/res/` into `ext/NextUI/workspace/batterycare/`, then cross-compiles in
+`ghcr.io/loveretro/tg5040-toolchain` (pinned by digest), linking NextUI's common sources +
+`libmsettings`. The elf compiles NextUI's `api.c`/`platform.c`/`config.c` in, so it must be
+built from the NextUI release on the device (`.system/version.txt`): after a NextUI update,
+bump `NEXTUI_REF` in `pak/Makefile` and rebuild.
 Output assembles to `pak/build/Battery Care.pak/`. `USERDATA_PATH`/`LOGS_PATH`/`PLATFORM`
 are set by NextUI at runtime; scripts fall back to tg5040 defaults when run by hand.
 clangd flags NextUI headers (`defines.h`, `api.h`) as missing — they resolve only in

@@ -3,8 +3,13 @@
 # tg5040 toolchain, then assembles build/Battery Care.pak/.
 
 PLATFORM    ?= tg5040
-TG5040_IMG  := ghcr.io/loveretro/tg5040-toolchain:latest
+# Pinned by digest (= :latest as of 2026-10-30, tg5040-toolchain d1a347d2).
+TG5040_IMG  := ghcr.io/loveretro/tg5040-toolchain@sha256:f131c6af64029a8723d0ce8d3c2682642f5f091b04714f6beedda9bec18477ab
 
+# The NextUI release the pak links against. libmsettings and the common UI
+# sources must match the NextUI on the device (.system/version.txt), so bump
+# this with NextUI. 39a06dea = NextUI-20261013-0.
+NEXTUI_REF  := 39a06deadfdd2bd08209208ff40752c8e51a449d
 NEXTUI_DIR  := ext/NextUI
 PAK_WS      := $(NEXTUI_DIR)/workspace/batterycare
 PAK_NAME    := Battery Care.pak
@@ -17,11 +22,13 @@ RELEASE_ZIP := Battery.Care.pak.zip
 
 all: pak
 
-# Clone NextUI on demand (gitignored, single shallow clone).
+# Fetch NextUI at NEXTUI_REF (gitignored, shallow); refetch when the pin moves.
 ext:
-	@if [ ! -d $(NEXTUI_DIR) ]; then \
-		echo "cloning NextUI into $(NEXTUI_DIR)..."; \
-		git clone --depth 1 https://github.com/LoveRetro/NextUI.git $(NEXTUI_DIR); \
+	@if [ "$$(git -C $(NEXTUI_DIR) rev-parse HEAD 2>/dev/null)" != "$(NEXTUI_REF)" ]; then \
+		echo "fetching NextUI $(NEXTUI_REF) into $(NEXTUI_DIR)..."; \
+		rm -rf $(NEXTUI_DIR) && git init -q $(NEXTUI_DIR) && \
+		git -C $(NEXTUI_DIR) fetch -q --depth 1 https://github.com/LoveRetro/NextUI.git $(NEXTUI_REF) && \
+		git -C $(NEXTUI_DIR) -c advice.detachedHead=false checkout -q FETCH_HEAD; \
 	fi
 	@mkdir -p $(PAK_WS)/src $(PAK_WS)/res
 	@cp -an src/. $(PAK_WS)/src/ 2>/dev/null || true
@@ -42,13 +49,15 @@ patch-readonly: ext
 		{ echo 'ERROR: CFG_sync read-only patch did not apply'; exit 1; }
 
 # Stage our src/ and res/ into the workspace, then build libmsettings + the elf.
+# Runs as root (libmsettings installs its header into the image's PREFIX_LOCAL)
+# and hands the workspace back to the host user on exit.
 tg5040: ext patch-readonly
 	cp -a src/. $(PAK_WS)/src/
 	cp -a res/. $(PAK_WS)/res/
 	docker run --rm \
 		-v "$(CURDIR)/$(NEXTUI_DIR)":/workspace \
 		-w /workspace $(TG5040_IMG) \
-		/bin/bash -c "set -e; \
+		/bin/bash -c "set -e; trap 'chown -R $$(id -u):$$(id -g) /workspace' EXIT; \
 			cd workspace/tg5040/libmsettings && make >/dev/null && \
 			cp libmsettings.so /workspace/workspace/batterycare/ && \
 			cd ../../batterycare/src && make"
@@ -83,9 +92,11 @@ z.close()"
 	@echo "built build/$(RELEASE_ZIP)"
 
 # Push the assembled pak to the device via adb (device must be in adb mode).
+# With several devices attached: make push ADB="adb -s SERIAL".
+ADB ?= adb
 push: pak
-	adb shell "mkdir -p '/mnt/SDCARD/Tools/$(PLATFORM)/$(PAK_NAME)'"
-	adb push "$(PAK_DIR)/." "/mnt/SDCARD/Tools/$(PLATFORM)/$(PAK_NAME)/"
+	$(ADB) shell "mkdir -p '/mnt/SDCARD/Tools/$(PLATFORM)/$(PAK_NAME)'"
+	$(ADB) push "$(PAK_DIR)/." "/mnt/SDCARD/Tools/$(PLATFORM)/$(PAK_NAME)/"
 	@echo "pushed to /mnt/SDCARD/Tools/$(PLATFORM)/$(PAK_NAME)/"
 
 clean:
