@@ -1,6 +1,6 @@
 {
   "name": "Battery Care",
-  "version": "v0.1.0",
+  "version": "v0.2.1",
   "type": "TOOL",
   "description": "Cap charging at a user-set percentage to extend battery life on the TrimUI Brick.",
   "author": "tyrannotorus",
